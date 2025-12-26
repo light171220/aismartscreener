@@ -21,5 +21,6 @@
     }
   },
   "include": ["src", "amplify_outputs.json"],
+  "exclude": ["node_modules", "amplify"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
