@@ -1,0 +1,9 @@
+{
+  "name": "aismartscreener-amplify",
+  "type": "module",
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.5.0",
+    "@aws-amplify/backend-cli": "^1.4.0",
+    "typescript": "^5.6.0"
+  }
+}
