@@ -87,6 +87,7 @@ export function SignUpPage() {
           userAttributes: {
             email: formData.email,
             preferred_username: formData.preferredUsername,
+            given_name: formData.preferredUsername,
           },
           autoSignIn: true,
         },

@@ -34,12 +34,13 @@ export function RequestAccessPage() {
   } | null;
 
   const [formData, setFormData] = React.useState({
-    fullName: locationState?.fullName || user?.name || '',
+    fullName: '',
     tradingExperience: '' as TradingExperience | '',
     reason: '',
   });
   const [error, setError] = React.useState('');
   const [submitted, setSubmitted] = React.useState(false);
+  const [nameInitialized, setNameInitialized] = React.useState(false);
 
   React.useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -58,10 +59,28 @@ export function RequestAccessPage() {
   }, [requestLoading, hasRequest, isPending, isApproved, navigate]);
 
   React.useEffect(() => {
-    if (user?.name && !formData.fullName) {
-      setFormData((prev) => ({ ...prev, fullName: user.name || '' }));
+    if (!nameInitialized && !authLoading) {
+      const nameFromState = locationState?.fullName;
+      const nameFromUser = user?.name;
+      const userEmail = user?.email || '';
+      const emailPrefix = userEmail.split('@')[0];
+      
+      let nameToUse = '';
+      
+      if (nameFromState) {
+        nameToUse = nameFromState;
+      } else if (nameFromUser && nameFromUser !== emailPrefix && nameFromUser !== 'User') {
+        nameToUse = nameFromUser;
+      }
+      
+      if (nameToUse) {
+        setFormData((prev) => ({ ...prev, fullName: nameToUse }));
+        setNameInitialized(true);
+      } else if (user?.email) {
+        setNameInitialized(true);
+      }
     }
-  }, [user?.name, formData.fullName]);
+  }, [authLoading, user?.name, user?.email, locationState?.fullName, nameInitialized]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

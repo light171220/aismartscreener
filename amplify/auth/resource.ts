@@ -12,7 +12,15 @@ export const auth = defineAuth({
 
   userAttributes: {
     preferredUsername: {
-      required: true,
+      required: false,
+      mutable: true,
+    },
+    givenName: {
+      required: false,
+      mutable: true,
+    },
+    familyName: {
+      required: false,
       mutable: true,
     },
     phoneNumber: {

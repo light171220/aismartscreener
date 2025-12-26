@@ -2,14 +2,10 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 import {
   GlassCard,
-  GlassCardHeader,
-  GlassCardTitle,
-  GlassCardContent,
   GlassButton,
   GlassTextarea,
-  PageLoader,
 } from '@/components/ui';
-import { useConversation } from '@/hooks/useConversation';
+import { useTradeAssistant } from '@/hooks/useConversation';
 import {
   Bot,
   Send,
@@ -21,6 +17,8 @@ import {
   AlertTriangle,
   Target,
   BarChart3,
+  RefreshCw,
+  XCircle,
 } from 'lucide-react';
 
 const quickActions = [
@@ -31,11 +29,10 @@ const quickActions = [
 ];
 
 export function TradeAssistantPage() {
-  const { messages, isLoading, sendMessage, clearConversation, conversationId } = useConversation('TRADE_ASSISTANT');
+  const { messages, isLoading, error, sendMessage, clearConversation, retry } = useTradeAssistant();
   const [inputValue, setInputValue] = React.useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -46,12 +43,12 @@ export function TradeAssistantPage() {
 
     const message = inputValue.trim();
     setInputValue('');
-    await sendMessage(message);
+    sendMessage(message);
   };
 
   const handleQuickAction = async (prompt: string) => {
     if (isLoading) return;
-    await sendMessage(prompt);
+    sendMessage(prompt);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -63,7 +60,6 @@ export function TradeAssistantPage() {
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
@@ -80,9 +76,20 @@ export function TradeAssistantPage() {
         </GlassButton>
       </div>
 
-      {/* Chat Container */}
+      {error && (
+        <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <XCircle className="w-5 h-5 text-red-400" />
+            <span className="text-red-300">{error}</span>
+          </div>
+          <GlassButton variant="ghost" size="sm" onClick={retry}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </GlassButton>
+        </div>
+      )}
+
       <GlassCard className="flex-1 flex flex-col overflow-hidden">
-        {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center">
@@ -96,13 +103,13 @@ export function TradeAssistantPage() {
                 Ask me about market conditions, trade setups, risk management, or get help analyzing specific stocks.
               </p>
               
-              {/* Quick Actions */}
               <div className="grid grid-cols-2 gap-3 max-w-lg">
                 {quickActions.map((action) => (
                   <button
                     key={action.label}
                     onClick={() => handleQuickAction(action.prompt)}
-                    className="flex items-center gap-2 p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group"
+                    disabled={isLoading}
+                    className="flex items-center gap-2 p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <action.icon className="w-5 h-5 text-blue-400 group-hover:text-blue-300" />
                     <span className="text-sm text-white group-hover:text-white/90">{action.label}</span>
@@ -116,14 +123,14 @@ export function TradeAssistantPage() {
                 <MessageBubble key={message.id} message={message} />
               ))}
               {isLoading && (
-                <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
                     <Bot className="w-4 h-4 text-white" />
                   </div>
                   <div className="glass rounded-lg rounded-tl-none p-4">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Thinking...</span>
+                      <span>Analyzing with Amazon Nova Pro...</span>
                     </div>
                   </div>
                 </div>
@@ -133,7 +140,6 @@ export function TradeAssistantPage() {
           )}
         </div>
 
-        {/* Input Area */}
         <div className="p-4 border-t border-white/10">
           <form onSubmit={handleSubmit} className="flex gap-3">
             <GlassTextarea
@@ -159,7 +165,7 @@ export function TradeAssistantPage() {
             </GlassButton>
           </form>
           <p className="text-xs text-slate-500 mt-2 text-center">
-            Powered by Claude AI • Not financial advice • Always do your own research
+            Powered by Amazon Nova Pro • Not financial advice • Always do your own research
           </p>
         </div>
       </GlassCard>
@@ -208,12 +214,10 @@ function MessageBubble({ message }: MessageBubbleProps) {
 }
 
 function FormattedMessage({ content }: { content: string }) {
-  // Simple markdown-like formatting
   const formatContent = (text: string) => {
     const lines = text.split('\n');
     
     return lines.map((line, index) => {
-      // Headers
       if (line.startsWith('###')) {
         return <h4 key={index} className="text-md font-semibold text-white mt-3 mb-1">{line.replace(/^###\s*/, '')}</h4>;
       }
@@ -224,7 +228,6 @@ function FormattedMessage({ content }: { content: string }) {
         return <h2 key={index} className="text-xl font-bold text-white mt-3 mb-2">{line.replace(/^#\s*/, '')}</h2>;
       }
       
-      // Bullet points
       if (line.startsWith('- ') || line.startsWith('• ')) {
         return (
           <li key={index} className="text-slate-300 ml-4 list-disc">
@@ -233,7 +236,6 @@ function FormattedMessage({ content }: { content: string }) {
         );
       }
       
-      // Numbered lists
       if (/^\d+\.\s/.test(line)) {
         return (
           <li key={index} className="text-slate-300 ml-4 list-decimal">
@@ -242,24 +244,20 @@ function FormattedMessage({ content }: { content: string }) {
         );
       }
       
-      // Empty lines
       if (line.trim() === '') {
         return <br key={index} />;
       }
       
-      // Regular paragraphs
       return <p key={index} className="text-slate-300 mb-1">{formatInlineText(line)}</p>;
     });
   };
 
   const formatInlineText = (text: string) => {
-    // Bold text **text**
     const parts = text.split(/(\*\*[^*]+\*\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         return <strong key={i} className="text-white font-semibold">{part.slice(2, -2)}</strong>;
       }
-      // Price/number highlighting
       return part.split(/(\$[\d,.]+|\d+(?:\.\d+)?%)/g).map((subpart, j) => {
         if (subpart.startsWith('$') || subpart.endsWith('%')) {
           return <span key={`${i}-${j}`} className="text-emerald-400 font-mono">{subpart}</span>;

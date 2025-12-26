@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchAuthSession, signIn, signOut, getCurrentUser } from 'aws-amplify/auth';
+import { fetchAuthSession, signIn, signOut, getCurrentUser, fetchUserAttributes } from 'aws-amplify/auth';
 
 interface User {
   id: string;
@@ -34,11 +34,38 @@ export function useAuth() {
         const payload = session.tokens.accessToken.payload;
         const groups = payload['cognito:groups'] as string[] || [];
         
+        let displayName: string | undefined;
+        let email = currentUser.signInDetails?.loginId || '';
+        
+        try {
+          const attributes = await fetchUserAttributes();
+          
+          if (attributes.email) {
+            email = attributes.email;
+          }
+          
+          if (attributes.preferred_username) {
+            displayName = attributes.preferred_username;
+          } else if (attributes.given_name && attributes.family_name) {
+            displayName = `${attributes.given_name} ${attributes.family_name}`;
+          } else if (attributes.given_name) {
+            displayName = attributes.given_name;
+          } else if (attributes.name) {
+            displayName = attributes.name;
+          } else if (attributes.nickname) {
+            displayName = attributes.nickname;
+          }
+        } catch (attrError) {
+          console.warn('Could not fetch user attributes:', attrError);
+        }
+        
+        const finalName = displayName || (email ? email.split('@')[0] : 'User');
+        
         setState({
           user: {
             id: currentUser.userId,
-            email: currentUser.signInDetails?.loginId || '',
-            name: currentUser.username,
+            email,
+            name: finalName,
             groups,
           },
           isLoading: false,

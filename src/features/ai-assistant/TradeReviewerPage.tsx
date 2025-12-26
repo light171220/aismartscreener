@@ -8,11 +8,10 @@ import {
   GlassCardDescription,
   GlassCardContent,
   GlassButton,
-  GlassBadge,
   PageLoader,
 } from '@/components/ui';
 import { useClosedTrades, useTradeStats, type Trade } from '@/hooks/useTrades';
-import { useConversation } from '@/hooks/useConversation';
+import { useTradeReviewer } from '@/hooks/useConversation';
 import {
   BookOpen,
   TrendingUp,
@@ -35,20 +34,18 @@ interface ScorecardGoal {
 }
 
 export function TradeReviewerPage() {
-  const { data: closedTrades = [], isLoading: tradesLoading, error, refetch } = useClosedTrades();
+  const { data: closedTrades = [], isLoading: tradesLoading, error: tradesError, refetch } = useClosedTrades();
   const { data: stats, isLoading: statsLoading } = useTradeStats();
-  const { messages, isLoading: aiLoading, sendMessage, clearConversation } = useConversation('TRADE_REVIEWER');
+  const { messages, isLoading: aiLoading, error: aiError, sendMessage, clearConversation, retry: retryAI } = useTradeReviewer();
   
   const [selectedTrade, setSelectedTrade] = React.useState<Trade | null>(null);
   const [reviewType, setReviewType] = React.useState<'trade' | 'day' | null>(null);
 
   const isLoading = tradesLoading || statsLoading;
 
-  // Get today's trades
   const today = new Date().toISOString().split('T')[0];
   const todayTrades = closedTrades.filter(t => t.sellDate === today);
   
-  // Calculate scorecard goals
   const scorecardGoals: ScorecardGoal[] = React.useMemo(() => {
     if (todayTrades.length === 0) {
       return [
@@ -72,7 +69,6 @@ export function TradeReviewerPage() {
     ];
   }, [todayTrades]);
 
-  // Generate AI review for a single trade
   const generateTradeReview = async (trade: Trade) => {
     setSelectedTrade(trade);
     setReviewType('trade');
@@ -103,30 +99,30 @@ Please analyze:
 4. What did I do well?
 5. What could I improve?`;
 
-    await sendMessage(prompt);
+    // Small delay to allow clearConversation to take effect
+    setTimeout(() => sendMessage(prompt), 100);
   };
 
-  // Generate AI review for the day
   const generateDaySummary = async () => {
     setSelectedTrade(null);
     setReviewType('day');
     clearConversation();
 
+    let prompt: string;
+
     if (todayTrades.length === 0) {
-      await sendMessage('I have no closed trades today. Can you give me some general trading preparation tips for tomorrow?');
-      return;
-    }
+      prompt = 'I have no closed trades today. Can you give me some general trading preparation tips for tomorrow?';
+    } else {
+      const wins = todayTrades.filter(t => (t.profit || 0) > 0).length;
+      const losses = todayTrades.length - wins;
+      const totalPL = todayTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
+      const avgR = todayTrades.reduce((sum, t) => sum + (t.rMultiple || 0), 0) / todayTrades.length;
 
-    const wins = todayTrades.filter(t => (t.profit || 0) > 0).length;
-    const losses = todayTrades.length - wins;
-    const totalPL = todayTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
-    const avgR = todayTrades.reduce((sum, t) => sum + (t.rMultiple || 0), 0) / todayTrades.length;
+      const tradesummary = todayTrades.map(t => 
+        `- ${t.ticker}: ${(t.profit || 0) >= 0 ? '+' : ''}${formatCurrency(t.profit || 0)} (${(t.rMultiple || 0).toFixed(2)}R) - ${t.setupType || 'N/A'}`
+      ).join('\n');
 
-    const tradesummary = todayTrades.map(t => 
-      `- ${t.ticker}: ${(t.profit || 0) >= 0 ? '+' : ''}${formatCurrency(t.profit || 0)} (${(t.rMultiple || 0).toFixed(2)}R) - ${t.setupType || 'N/A'}`
-    ).join('\n');
-
-    const prompt = `Please review my trading day:
+      prompt = `Please review my trading day:
 
 **Day Summary:**
 - Total Trades: ${todayTrades.length}
@@ -146,18 +142,20 @@ Please analyze:
 3. What I did well today
 4. Areas for improvement
 5. Specific recommendations for tomorrow`;
+    }
 
-    await sendMessage(prompt);
+    // Small delay to allow clearConversation to take effect
+    setTimeout(() => sendMessage(prompt), 100);
   };
 
   if (isLoading) return <PageLoader message="Loading trade data..." />;
 
-  if (error) {
+  if (tradesError) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center">
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
         <p className="text-white text-lg">Failed to load trade data</p>
-        <p className="text-slate-400 mt-2">{(error as Error).message}</p>
+        <p className="text-slate-400 mt-2">{(tradesError as Error).message}</p>
         <GlassButton onClick={() => refetch()} className="mt-4">
           <RefreshCw className="w-4 h-4 mr-2" />
           Retry
@@ -168,7 +166,6 @@ Please analyze:
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
@@ -189,10 +186,21 @@ Please analyze:
         </GlassButton>
       </div>
 
+      {aiError && (
+        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <XCircle className="w-5 h-5 text-red-400" />
+            <span className="text-red-300">{aiError}</span>
+          </div>
+          <GlassButton variant="ghost" size="sm" onClick={retryAI}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </GlassButton>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left Column - Trades List & Stats */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Stats Cards */}
           <div className="grid grid-cols-2 gap-3">
             <GlassCard className="p-4">
               <p className="text-sm text-slate-400">Total P&L</p>
@@ -217,7 +225,6 @@ Please analyze:
             </GlassCard>
           </div>
 
-          {/* Daily Scorecard */}
           <GlassCard>
             <GlassCardHeader>
               <GlassCardTitle className="flex items-center gap-2">
@@ -252,7 +259,6 @@ Please analyze:
             </GlassCardContent>
           </GlassCard>
 
-          {/* Recent Trades */}
           <GlassCard>
             <GlassCardHeader>
               <GlassCardTitle>Recent Closed Trades</GlassCardTitle>
@@ -326,7 +332,6 @@ Please analyze:
           </GlassCard>
         </div>
 
-        {/* Right Column - AI Review */}
         <div className="lg:col-span-2">
           <GlassCard className="h-full">
             <GlassCardHeader>
@@ -373,7 +378,7 @@ Please analyze:
                     <div className="glass rounded-lg p-4">
                       <div className="flex items-center gap-2 text-slate-400">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Analyzing...</span>
+                        <span>Analyzing with Amazon Nova Pro...</span>
                       </div>
                     </div>
                   )}

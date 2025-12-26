@@ -58,9 +58,12 @@ export type { Trade, TradeInput, CloseTradeInput, TradeStats } from './useTrades
 
 export {
   useConversation,
+  useTradeAssistant,
+  useTradeReviewer,
   useConversationHistory,
   useConversationById,
   useDeleteConversation,
+  useAnalyzeStock,
   conversationKeys,
 } from './useConversation';
 export type { Message, Conversation, ConversationType } from './useConversation';

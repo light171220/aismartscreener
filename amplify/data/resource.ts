@@ -6,7 +6,7 @@ import { resultsCombiner } from '../jobs/results-combiner/resource';
 
 const schema = a.schema({
   tradeAssistant: a.conversation({
-    aiModel: a.ai.model('Claude 3.5 Sonnet'),
+    aiModel: a.ai.model('Amazon Nova Pro'),
     systemPrompt: `You are an expert day trading assistant specializing in momentum trading strategies. 
 You help traders analyze stocks, identify setups, and make informed trading decisions.
 You have access to Method 1 (liquidity + catalyst + technical setup) and Method 2 (4-gate system) screening methodologies.
@@ -17,7 +17,7 @@ Be concise but thorough in your analysis.`,
   .authorization((allow) => allow.owner()),
 
   tradeReviewer: a.conversation({
-    aiModel: a.ai.model('Claude 3.5 Sonnet'),
+    aiModel: a.ai.model('Amazon Nova Pro'),
     systemPrompt: `You are a trading performance coach who reviews completed trades.
 Analyze trade entries, exits, risk management, and emotional decisions.
 Provide constructive feedback on what went well and areas for improvement.
@@ -28,7 +28,7 @@ Be supportive but honest in your assessments.`,
   .authorization((allow) => allow.owner()),
 
   analyzeStock: a.generation({
-    aiModel: a.ai.model('Claude 3.5 Sonnet'),
+    aiModel: a.ai.model('Amazon Nova Pro'),
     systemPrompt: `Analyze the given stock data and provide a structured trading analysis.
 Include: setup quality rating, entry/exit points, risk assessment, and key catalysts.
 Be specific with price levels and percentages.`,
